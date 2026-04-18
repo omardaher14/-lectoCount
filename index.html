@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÉlectoCount — Comptage de symboles PDF</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1f2530;
+    --accent: #f0c040;
+    --accent2: #3b82f6;
+    --accent3: #10b981;
+    --danger: #ef4444;
+    --text: #e8eaf0;
+    --text-muted: #6b7280;
+    --text-dim: #374151;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .logo-block {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 44px;
+    height: 44px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 18px;
+    color: #000;
+    letter-spacing: -1px;
+    flex-shrink: 0;
+  }
+
+  .logo-text h1 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo-text p {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 300;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    align-self: center;
+  }
+
+  /* DROP ZONE */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 56px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(240,192,64,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #13110a;
+  }
+
+  .drop-zone:hover::before, .drop-zone.drag-over::before {
+    background: radial-gradient(ellipse at 50% 0%, rgba(240,192,64,0.12) 0%, transparent 70%);
+  }
+
+  .drop-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 20px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s;
+  }
+
+  .drop-zone:hover .drop-icon {
+    border-color: var(--accent);
+  }
+
+  .drop-icon svg { width: 24px; height: 24px; color: var(--text-muted); transition: color 0.25s; }
+  .drop-zone:hover .drop-icon svg { color: var(--accent); }
+
+  .drop-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .drop-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .drop-sub strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  #file-input { display: none; }
+
+  /* SYMBOLS CONFIG */
+  .config-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 32px;
+  }
+
+  .section-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title::before {
+    content: '';
+    width: 3px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .symbols-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .symbol-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    transition: all 0.2s;
+    animation: tagIn 0.3s ease forwards;
+  }
+
+  @keyframes tagIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .symbol-tag .tag-color {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .symbol-tag .tag-remove {
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 16px;
+    line-height: 1;
+    transition: color 0.15s;
+    margin-left: 2px;
+  }
+
+  .symbol-tag .tag-remove:hover { color: var(--danger); }
+
+  .add-symbol-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .input-field {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 160px;
+  }
+
+  .input-field:focus { border-color: var(--accent); }
+  .input-field::placeholder { color: var(--text-dim); }
+
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-primary:hover { background: #f5d060; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .btn-run {
+    width: 100%;
+    padding: 16px;
+    font-size: 15px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .btn-run:hover { background: #f5d060; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(240,192,64,0.25); }
+  .btn-run:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* PROGRESS */
+  .progress-bar-wrap {
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 4px;
+    width: 100%;
+    margin-bottom: 8px;
+    overflow: hidden;
+    display: none;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  /* RESULTS */
+  #results { display: none; }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .results-title {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: -1px;
+  }
+
+  .results-title span { color: var(--accent); }
+
+  .results-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* SUMMARY CARDS */
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    animation: cardIn 0.4s ease forwards;
+    opacity: 0;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .summary-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .summary-card .card-symbol {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .summary-card .card-symbol .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .summary-card .card-count {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 42px;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .summary-card .card-label {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* DETAIL TABLE */
+  .detail-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .detail-panel-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+  }
+
+  .detail-panel-header h3 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .detail-panel-header h3 .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: var(--surface2);
+  }
+
+  thead th {
+    padding: 10px 20px;
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody td {
+    padding: 12px 20px;
+    color: var(--text);
+  }
+
+  td.zone-cell {
+    font-weight: 500;
+    color: var(--accent);
+    font-size: 15px;
+  }
+
+  td.count-cell {
+    font-weight: 500;
+    font-size: 15px;
+  }
+
+  .bar-cell { width: 200px; }
+
+  .inline-bar {
+    height: 6px;
+    border-radius: 99px;
+    background: var(--border);
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .inline-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* EXPORT */
+  .export-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 320px;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* FILE INFO */
+  .file-info {
+    display: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    align-items: center;
+    gap: 10px;
+  }
+
+  .file-info svg { color: var(--accent); flex-shrink: 0; }
+
+  .file-info .file-name {
+    color: var(--text);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* NO RESULTS */
+  .no-results {
+    text-align: center;
+    padding: 48px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 13px;
+    display: none;
+  }
+
+  /* TOTAL BADGE */
+  .grand-total {
+    background: linear-gradient(135deg, #1a1500 0%, #0f1520 100%);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 20px 28px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .grand-total .gt-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .grand-total .gt-value {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 48px;
+    letter-spacing: -2px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .grand-total .gt-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .grand-total .gt-breakdown {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .gt-item {
+    text-align: center;
+  }
+
+  .gt-item .gt-item-val {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+
+  .gt-item .gt-item-key {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .summary-cards { grid-template-columns: repeat(2, 1fr); }
+    .grand-total .gt-value { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-block">
+      <div class="logo-icon">Ω</div>
+      <div class="logo-text">
+        <h1>ÉlectoCount</h1>
+        <p>Comptage automatique de symboles — Plans électriques</p>
+      </div>
+    </div>
+    <span class="badge">v1.0 · DCE/ICT</span>
+  </header>
+
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="drop-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+    </div>
+    <div class="drop-title">Déposer votre plan PDF ici</div>
+    <div class="drop-sub">
+      ou <strong>cliquer pour sélectionner</strong> · Fichier PDF uniquement<br>
+      Plans courants forts/faibles, CFO/CFA, SSI, VDI…
+    </div>
+    <input type="file" id="file-input" accept=".pdf,application/pdf">
+  </div>
+
+  <!-- FILE INFO -->
+  <div class="file-info" id="file-info">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <span class="file-name" id="file-name-display"></span>
+    <span id="file-pages" style="margin-left:auto;"></span>
+  </div>
+
+  <!-- SYMBOLES CONFIG -->
+  <div class="config-section">
+    <div class="section-title">Symboles à rechercher</div>
+    <div class="symbols-grid" id="symbols-grid"></div>
+    <div class="add-symbol-row">
+      <input type="text" class="input-field" id="new-symbol" placeholder="ex: PT1, PA1…" maxlength="20"
+        onkeydown="if(event.key==='Enter') addSymbol()">
+      <button class="btn btn-primary" onclick="addSymbol()">+ Ajouter</button>
+      <button class="btn btn-secondary" onclick="resetSymbols()">Réinitialiser</button>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar-wrap" id="progress-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+  <div class="progress-label" id="progress-label">Analyse en cours…</div>
+
+  <!-- LAUNCH -->
+  <button class="btn btn-run" id="btn-run" onclick="runAnalysis()" disabled>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    Lancer le comptage
+  </button>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <div class="results-header">
+      <div class="results-title">Résultats <span id="results-filename-short"></span></div>
+      <div class="results-meta" id="results-meta"></div>
+    </div>
+
+    <!-- GRAND TOTAL -->
+    <div class="grand-total" id="grand-total-block">
+      <div>
+        <div class="gt-label">Total général</div>
+        <div class="gt-value" id="gt-value">—</div>
+        <div class="gt-desc" id="gt-desc"></div>
+      </div>
+      <div class="gt-breakdown" id="gt-breakdown"></div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-cards" id="summary-cards"></div>
+
+    <!-- DETAIL TABLES per symbol -->
+    <div id="detail-tables"></div>
+
+    <!-- NO RESULTS -->
+    <div class="no-results" id="no-results">Aucun symbole trouvé dans ce document.</div>
+
+    <!-- EXPORT -->
+    <div class="export-row">
+      <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-secondary" onclick="exportJSON()">⬇ Export JSON</button>
+      <button class="btn btn-secondary" onclick="copyReport()">📋 Copier le rapport</button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ── PDF.js worker ──────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── State ──────────────────────────────────────────────────────
+const COLORS = ['#f0c040','#3b82f6','#10b981','#f472b6','#a78bfa','#fb923c','#34d399','#60a5fa','#fbbf24','#e879f9'];
+const DEFAULT_SYMBOLS = ['PT1','PA1','PCS','PT2','RJ45'];
+
+let symbols = [...DEFAULT_SYMBOLS];
+let pdfFile = null;
+let analysisResults = null;
+let totalPages = 0;
+
+// ── Symbol tags ────────────────────────────────────────────────
+function renderSymbols() {
+  const grid = document.getElementById('symbols-grid');
+  grid.innerHTML = '';
+  symbols.forEach((sym, i) => {
+    const tag = document.createElement('div');
+    tag.className = 'symbol-tag';
+    tag.innerHTML = `
+      <span class="tag-color" style="background:${COLORS[i % COLORS.length]}"></span>
+      <span>${sym}</span>
+      <span class="tag-remove" onclick="removeSymbol(${i})">×</span>`;
+    grid.appendChild(tag);
+  });
+}
+
+function addSymbol() {
+  const input = document.getElementById('new-symbol');
+  const val = input.value.trim().toUpperCase();
+  if (!val) return;
+  if (symbols.includes(val)) { showToast('⚠ Ce symbole est déjà dans la liste'); input.value = ''; return; }
+  symbols.push(val);
+  input.value = '';
+  renderSymbols();
+}
+
+function removeSymbol(i) {
+  symbols.splice(i, 1);
+  renderSymbols();
+}
+
+function resetSymbols() {
+  symbols = [...DEFAULT_SYMBOLS];
+  renderSymbols();
+}
+
+// ── Drop Zone ──────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') loadFile(f);
+  else showToast('⚠ Veuillez déposer un fichier PDF');
+});
+
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+async function loadFile(file) {
+  pdfFile = file;
+  document.getElementById('file-name-display').textContent = file.name;
+
+  // get page count
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  totalPages = pdf.numPages;
+  document.getElementById('file-pages').textContent = `${totalPages} page${totalPages > 1 ? 's' : ''}`;
+
+  const fi = document.getElementById('file-info');
+  fi.style.display = 'flex';
+
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('results').style.display = 'none';
+  showToast(`✓ ${file.name} chargé (${totalPages} page${totalPages>1?'s':''})`);
+}
+
+// ── Analysis ───────────────────────────────────────────────────
+async function runAnalysis() {
+  if (!pdfFile || symbols.length === 0) return;
+
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity=".25"/><path d="M21 12a9 9 0 00-9-9"/></svg> Analyse en cours…`;
+
+  const pw = document.getElementById('progress-wrap');
+  const pf = document.getElementById('progress-fill');
+  const pl = document.getElementById('progress-label');
+  pw.style.display = 'block';
+  pl.style.display = 'block';
+
+  const ab = await pdfFile.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  const numPages = pdf.numPages;
+
+  // Per-symbol, per-page counts
+  const results = {};
+  symbols.forEach(s => { results[s] = { total: 0, pages: {} }; });
+
+  for (let p = 1; p <= numPages; p++) {
+    pf.style.width = `${(p / numPages) * 100}%`;
+    pl.textContent = `Analyse de la page ${p} / ${numPages}…`;
+
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(i => i.str).join(' ');
+
+    symbols.forEach(sym => {
+      const regex = new RegExp(`\\b${escapeRegex(sym)}\\b`, 'g');
+      const matches = (pageText.match(regex) || []).length;
+      if (matches > 0) {
+        results[sym].total += matches;
+        results[sym].pages[p] = (results[sym].pages[p] || 0) + matches;
+      }
+    });
+  }
+
+  pw.style.display = 'none';
+  pl.style.display = 'none';
+
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Lancer le comptage`;
+  btn.disabled = false;
+
+  analysisResults = results;
+  renderResults(results, numPages);
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ── Render Results ─────────────────────────────────────────────
+function renderResults(results, numPages) {
+  document.getElementById('results').style.display = 'block';
+
+  const name = pdfFile.name.replace(/\.pdf$/i, '');
+  document.getElementById('results-filename-short').textContent = `— ${name}`;
+  document.getElementById('results-meta').textContent =
+    `${numPages} page${numPages>1?'s':''} · ${symbols.length} symbole${symbols.length>1?'s':''} · ${new Date().toLocaleString('fr-FR')}`;
+
+  // Grand total
+  const grandTotal = Object.values(results).reduce((a, r) => a + r.total, 0);
+  document.getElementById('gt-value').textContent = grandTotal.toLocaleString('fr-FR');
+  document.getElementById('gt-desc').textContent =
+    `occurrences trouvées sur ${numPages} page${numPages>1?'s':''}`;
+
+  // Breakdown per symbol
+  const breakdown = document.getElementById('gt-breakdown');
+  breakdown.innerHTML = '';
+  symbols.forEach((sym, i) => {
+    const r = results[sym];
+    if (r.total === 0) return;
+    const el = document.createElement('div');
+    el.className = 'gt-item';
+    el.innerHTML = `
+      <div class="gt-item-val" style="color:${COLORS[i % COLORS.length]}">${r.total}</div>
+      <div class="gt-item-key">${sym}</div>`;
+    breakdown.appendChild(el);
+  });
+
+  // Summary cards
+  const cards = document.getElementById('summary-cards');
+  cards.innerHTML = '';
+  const maxVal = Math.max(...symbols.map(s => results[s].total));
+  symbols.forEach((sym, i) => {
+    const r = results[sym];
+    const color = COLORS[i % COLORS.length];
+    const card = document.createElement('div');
+    card.className = 'summary-card';
+    card.style.setProperty('animation-delay', `${i * 60}ms`);
+    card.style.cssText += `--card-color:${color}`;
+    card.querySelector?.('') ;
+    card.innerHTML = `
+      <style>.summary-card:nth-child(${i+1})::before { background: ${color}; }</style>
+      <div class="card-symbol">
+        <span class="dot" style="background:${color}"></span>
+        ${sym}
+      </div>
+      <div class="card-count" style="color:${color}">${r.total}</div>
+      <div class="card-label">${r.total === 0 ? 'Non trouvé' : `occurrence${r.total > 1 ? 's' : ''}`}</div>`;
+    cards.appendChild(card);
+  });
+
+  // Detail tables
+  const tables = document.getElementById('detail-tables');
+  tables.innerHTML = '';
+
+  symbols.forEach((sym, i) => {
+    const r = results[sym];
+    if (r.total === 0) return;
+    const color = COLORS[i % COLORS.length];
+    const pages = Object.entries(r.pages).sort((a, b) => Number(a[0]) - Number(b[0]));
+    const maxPage = Math.max(...pages.map(p => p[1]));
+
+    const panel = document.createElement('div');
+    panel.className = 'detail-panel';
+    panel.style.marginBottom = '16px';
+
+    let rows = pages.map(([pg, cnt]) => `
+      <tr>
+        <td class="zone-cell" style="color:${color}">Page ${pg}</td>
+        <td class="count-cell">${cnt}</td>
+        <td>${((cnt / r.total) * 100).toFixed(1)} %</td>
+        <td class="bar-cell">
+          <div class="inline-bar">
+            <div class="inline-bar-fill" style="width:${(cnt/maxPage)*100}%; background:${color}"></div>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    panel.innerHTML = `
+      <div class="detail-panel-header">
+        <h3><span class="dot" style="background:${color}"></span>${sym} — ${r.total} occurrence${r.total>1?'s':''}</h3>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">${pages.length} page${pages.length>1?'s':''} concernée${pages.length>1?'s':''}</span>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Page</th><th>Occurrences</th><th>% du total</th><th>Répartition</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    tables.appendChild(panel);
+  });
+
+  const noRes = document.getElementById('no-results');
+  noRes.style.display = grandTotal === 0 ? 'block' : 'none';
+
+  // Animate bars after DOM paint
+  setTimeout(() => {
+    document.querySelectorAll('.inline-bar-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0';
+      requestAnimationFrame(() => { el.style.width = w; });
+    });
+  }, 100);
+
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast(`✓ Comptage terminé — ${grandTotal} symboles trouvés`);
+}
+
+// ── Exports ────────────────────────────────────────────────────
+function exportCSV() {
+  if (!analysisResults) return;
+  let csv = 'Symbole,Page,Occurrences\n';
+  symbols.forEach(sym => {
+    const r = analysisResults[sym];
+    Object.entries(r.pages).sort((a,b)=>Number(a[0])-Number(b[0])).forEach(([pg, cnt]) => {
+      csv += `${sym},${pg},${cnt}\n`;
+    });
+  });
+  download(csv, `electocount_${Date.now()}.csv`, 'text/csv');
+  showToast('✓ Export CSV téléchargé');
+}
+
+function exportJSON() {
+  if (!analysisResults) return;
+  const out = {
+    file: pdfFile.name,
+    date: new Date().toISOString(),
+    symbols: {}
+  };
+  symbols.forEach(sym => {
+    out.symbols[sym] = {
+      total: analysisResults[sym].total,
+      pages: analysisResults[sym].pages
+    };
+  });
+  download(JSON.stringify(out, null, 2), `electocount_${Date.now()}.json`, 'application/json');
+  showToast('✓ Export JSON téléchargé');
+}
+
+function copyReport() {
+  if (!analysisResults) return;
+  let txt = `RAPPORT ELECTOCOUNT — ${pdfFile.name}\n${'─'.repeat(50)}\n`;
+  txt += `Date : ${new Date().toLocaleString('fr-FR')}\n\n`;
+  let total = 0;
+  symbols.forEach(sym => {
+    const r = analysisResults[sym];
+    total += r.total;
+    txt += `${sym.padEnd(10)} : ${String(r.total).padStart(4)} occurrence${r.total>1?'s':''}\n`;
+    Object.entries(r.pages).forEach(([pg, cnt]) => {
+      txt += `  → Page ${pg} : ${cnt}\n`;
+    });
+  });
+  txt += `\n${'─'.repeat(50)}\nTOTAL : ${total} symboles\n`;
+  navigator.clipboard.writeText(txt).then(() => showToast('✓ Rapport copié dans le presse-papiers'));
+}
+
+function download(content, filename, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Spin keyframe ──────────────────────────────────────────────
+const style = document.createElement('style');
+style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+document.head.appendChild(style);
+
+// ── Init ───────────────────────────────────────────────────────
+renderSymbols();
+</script>
+</body>
+</html>
