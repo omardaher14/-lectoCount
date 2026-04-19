@@ -3,788 +3,1059 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ÉlectoCount — Comptage de symboles PDF</title>
+<title>ÉlectoCount Pro — Analyse de Plans Électriques</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-
-  :root {
-    --bg: #0a0c10;
-    --surface: #111318;
-    --surface2: #181c24;
-    --border: #1f2530;
-    --accent: #f0c040;
-    --accent2: #3b82f6;
-    --accent3: #10b981;
-    --danger: #ef4444;
-    --text: #e8eaf0;
-    --text-muted: #6b7280;
-    --text-dim: #374151;
-    --mono: 'DM Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
-    --display: 'Syne', sans-serif;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* GRID BACKGROUND */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 40px 40px;
-    opacity: 0.35;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .wrapper {
-    position: relative;
-    z-index: 1;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-  }
-
-  /* HEADER */
-  header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 48px;
-    padding-bottom: 32px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-
-  .logo-block {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .logo-icon {
-    width: 44px;
-    height: 44px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 18px;
-    color: #000;
-    letter-spacing: -1px;
-    flex-shrink: 0;
-  }
-
-  .logo-text h1 {
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 22px;
-    letter-spacing: -0.5px;
-    color: var(--text);
-  }
-
-  .logo-text p {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-weight: 300;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    margin-top: 2px;
-  }
-
-  .badge {
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    border-radius: 99px;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    align-self: center;
-  }
-
-  /* DROP ZONE */
-  .drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: 16px;
-    padding: 56px 40px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    background: var(--surface);
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 32px;
-  }
-
-  .drop-zone::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 0%, rgba(240,192,64,0.06) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: #13110a;
-  }
-
-  .drop-zone:hover::before, .drop-zone.drag-over::before {
-    background: radial-gradient(ellipse at 50% 0%, rgba(240,192,64,0.12) 0%, transparent 70%);
-  }
-
-  .drop-icon {
-    width: 56px;
-    height: 56px;
-    margin: 0 auto 20px;
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.25s;
-  }
-
-  .drop-zone:hover .drop-icon {
-    border-color: var(--accent);
-  }
-
-  .drop-icon svg { width: 24px; height: 24px; color: var(--text-muted); transition: color 0.25s; }
-  .drop-zone:hover .drop-icon svg { color: var(--accent); }
-
-  .drop-title {
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 18px;
-    margin-bottom: 8px;
-    color: var(--text);
-  }
-
-  .drop-sub {
-    font-size: 13px;
-    color: var(--text-muted);
-    line-height: 1.6;
-  }
-
-  .drop-sub strong {
-    color: var(--accent);
-    font-weight: 500;
-  }
-
-  #file-input { display: none; }
-
-  /* SYMBOLS CONFIG */
-  .config-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px;
-    margin-bottom: 32px;
-  }
-
-  .section-title {
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--text-muted);
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .section-title::before {
-    content: '';
-    width: 3px;
-    height: 14px;
-    background: var(--accent);
-    border-radius: 2px;
-    display: inline-block;
-  }
-
-  .symbols-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .symbol-tag {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text);
-    transition: all 0.2s;
-    animation: tagIn 0.3s ease forwards;
-  }
-
-  @keyframes tagIn {
-    from { opacity: 0; transform: scale(0.85); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
-  .symbol-tag .tag-color {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .symbol-tag .tag-remove {
-    cursor: pointer;
-    color: var(--text-dim);
-    font-size: 16px;
-    line-height: 1;
-    transition: color 0.15s;
-    margin-left: 2px;
-  }
-
-  .symbol-tag .tag-remove:hover { color: var(--danger); }
-
-  .add-symbol-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .input-field {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 14px;
-    padding: 10px 14px;
-    outline: none;
-    transition: border-color 0.2s;
-    width: 160px;
-  }
-
-  .input-field:focus { border-color: var(--accent); }
-  .input-field::placeholder { color: var(--text-dim); }
-
-  .btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-family: var(--display);
-    font-weight: 600;
-    font-size: 13px;
-    transition: all 0.2s;
-    letter-spacing: 0.3px;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #000;
-  }
-  .btn-primary:hover { background: #f5d060; transform: translateY(-1px); }
-  .btn-primary:active { transform: translateY(0); }
-
-  .btn-secondary {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
-
-  .btn-run {
-    width: 100%;
-    padding: 16px;
-    font-size: 15px;
-    border-radius: 12px;
-    background: var(--accent);
-    color: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 32px;
-  }
-
-  .btn-run:hover { background: #f5d060; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(240,192,64,0.25); }
-  .btn-run:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-
-  /* PROGRESS */
-  .progress-bar-wrap {
-    background: var(--surface2);
-    border-radius: 4px;
-    height: 4px;
-    width: 100%;
-    margin-bottom: 8px;
-    overflow: hidden;
-    display: none;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 4px;
-    width: 0%;
-    transition: width 0.3s ease;
-  }
-
-  .progress-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    text-align: center;
-    margin-bottom: 20px;
-    display: none;
-  }
-
-  /* RESULTS */
-  #results { display: none; }
-
-  .results-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .results-title {
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 28px;
-    letter-spacing: -1px;
-  }
-
-  .results-title span { color: var(--accent); }
-
-  .results-meta {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-  }
-
-  /* SUMMARY CARDS */
-  .summary-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 32px;
-  }
-
-  .summary-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    animation: cardIn 0.4s ease forwards;
-    opacity: 0;
-    transition: border-color 0.2s, transform 0.2s;
-  }
-
-  .summary-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-
-  @keyframes cardIn {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .summary-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-  }
-
-  .summary-card .card-symbol {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .summary-card .card-symbol .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .summary-card .card-count {
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 42px;
-    letter-spacing: -2px;
-    line-height: 1;
-    margin-bottom: 4px;
-  }
-
-  .summary-card .card-label {
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-
-  /* DETAIL TABLE */
-  .detail-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 24px;
-  }
-
-  .detail-panel-header {
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface2);
-  }
-
-  .detail-panel-header h3 {
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .detail-panel-header h3 .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 13px;
-  }
-
-  thead tr {
-    background: var(--surface2);
-  }
-
-  thead th {
-    padding: 10px 20px;
-    text-align: left;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--text-muted);
-    font-weight: 500;
-    border-bottom: 1px solid var(--border);
-  }
-
-  tbody tr {
-    border-bottom: 1px solid var(--border);
-    transition: background 0.15s;
-  }
-
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--surface2); }
-
-  tbody td {
-    padding: 12px 20px;
-    color: var(--text);
-  }
-
-  td.zone-cell {
-    font-weight: 500;
-    color: var(--accent);
-    font-size: 15px;
-  }
-
-  td.count-cell {
-    font-weight: 500;
-    font-size: 15px;
-  }
-
-  .bar-cell { width: 200px; }
-
-  .inline-bar {
-    height: 6px;
-    border-radius: 99px;
-    background: var(--border);
-    overflow: hidden;
-    width: 100%;
-  }
-
-  .inline-bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* EXPORT */
-  .export-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 32px;
-  }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--surface);
-    border: 1px solid var(--accent);
-    border-radius: 10px;
-    padding: 14px 20px;
-    font-size: 13px;
-    color: var(--text);
-    z-index: 999;
-    transform: translateY(80px);
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    max-width: 320px;
-  }
-
-  .toast.show { transform: translateY(0); opacity: 1; }
-
-  /* FILE INFO */
-  .file-info {
-    display: none;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-muted);
-    align-items: center;
-    gap: 10px;
-  }
-
-  .file-info svg { color: var(--accent); flex-shrink: 0; }
-
-  .file-info .file-name {
-    color: var(--text);
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* NO RESULTS */
-  .no-results {
-    text-align: center;
-    padding: 48px;
-    color: var(--text-muted);
-    font-family: var(--mono);
-    font-size: 13px;
-    display: none;
-  }
-
-  /* TOTAL BADGE */
-  .grand-total {
-    background: linear-gradient(135deg, #1a1500 0%, #0f1520 100%);
-    border: 1px solid var(--accent);
-    border-radius: 12px;
-    padding: 20px 28px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .grand-total .gt-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-  }
-
-  .grand-total .gt-value {
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 48px;
-    letter-spacing: -2px;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .grand-total .gt-desc {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 4px;
-  }
-
-  .grand-total .gt-breakdown {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-
-  .gt-item {
-    text-align: center;
-  }
-
-  .gt-item .gt-item-val {
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 22px;
-    letter-spacing: -0.5px;
-  }
-
-  .gt-item .gt-item-key {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  /* Responsive */
-  @media (max-width: 640px) {
-    .summary-cards { grid-template-columns: repeat(2, 1fr); }
-    .grand-total .gt-value { font-size: 36px; }
-  }
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+:root {
+  --bg: #080b10;
+  --bg2: #0d1018;
+  --surface: #111520;
+  --surface2: #161b28;
+  --surface3: #1c2235;
+  --border: #1e2535;
+  --border2: #252d40;
+  --yellow: #f0c040;
+  --yellow-dim: rgba(240,192,64,0.12);
+  --blue: #4f8ef7;
+  --blue-dim: rgba(79,142,247,0.12);
+  --green: #2dd4bf;
+  --green-dim: rgba(45,212,191,0.12);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.12);
+  --orange: #fb923c;
+  --orange-dim: rgba(251,146,60,0.12);
+  --pink: #f472b6;
+  --pink-dim: rgba(244,114,182,0.12);
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34,211,238,0.12);
+  --text: #dde2ef;
+  --text-muted: #5a6480;
+  --text-dim: #2d3550;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* GRID BG */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+
+/* ── LAYOUT ── */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.logo-icon {
+  width: 32px; height: 32px;
+  background: var(--yellow);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display);
+  font-weight: 800; font-size: 14px; color: #000;
+}
+
+.logo-name {
+  font-family: var(--display);
+  font-weight: 800; font-size: 16px;
+  letter-spacing: -0.5px;
+}
+
+.logo-name span { color: var(--yellow); }
+
+.logo-tagline {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-family: var(--mono);
+}
+
+.nav { padding: 12px 0; flex: 1; }
+
+.nav-section {
+  padding: 8px 16px 4px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: all 0.15s;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+
+.nav-item:hover { color: var(--text); background: var(--surface); }
+.nav-item.active { color: var(--yellow); border-left-color: var(--yellow); background: var(--yellow-dim); font-weight: 500; }
+
+.nav-item .nav-icon { width: 15px; text-align: center; opacity: 0.7; }
+.nav-item.active .nav-icon { opacity: 1; }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--surface3);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  border: 1px solid var(--border2);
+}
+
+.nav-item.active .nav-badge { background: var(--yellow-dim); color: var(--yellow); border-color: rgba(240,192,64,0.3); }
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+/* MAIN */
+.main { flex: 1; overflow-y: auto; }
+
+/* PAGES */
+.page { display: none; padding: 32px 36px 60px; max-width: 1100px; }
+.page.active { display: block; }
+
+/* PAGE HEADER */
+.page-header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.page-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.8px;
+  line-height: 1.1;
+}
+
+.page-title span { color: var(--yellow); }
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-weight: 300;
+}
+
+/* ── COMPONENTS ── */
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed var(--border2);
+  border-radius: 16px;
+  padding: 48px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  background: var(--surface);
+  position: relative; overflow: hidden;
+}
+
+.drop-zone::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(240,192,64,0.05) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--yellow);
+  background: rgba(240,192,64,0.03);
+}
+
+.drop-zone-icon {
+  width: 52px; height: 52px;
+  border: 2px solid var(--border2);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  transition: all 0.25s;
+  color: var(--text-muted);
+}
+
+.drop-zone:hover .drop-zone-icon { border-color: var(--yellow); color: var(--yellow); }
+
+.drop-zone h3 {
+  font-family: var(--display);
+  font-weight: 700; font-size: 17px;
+  margin-bottom: 8px;
+}
+
+.drop-zone p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.drop-zone p strong { color: var(--yellow); font-weight: 500; }
+
+/* Cards grid */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.card:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+.card-top { height: 2px; position: absolute; top: 0; left: 0; right: 0; }
+
+.card-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.card-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 40px;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.card-desc { font-size: 11px; color: var(--text-muted); }
+
+/* Section title */
+.section-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.section-title::before {
+  content: '';
+  width: 3px; height: 13px;
+  background: var(--yellow);
+  border-radius: 2px;
+}
+
+/* Panel */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.panel-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+
+.panel-header h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.panel-body { padding: 20px; }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface2); }
+tbody td { padding: 11px 16px; font-family: var(--mono); font-size: 12px; }
+td.em { font-weight: 500; font-size: 13px; }
+
+/* Progress */
+.progress-wrap { background: var(--surface2); border-radius: 3px; height: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; background: linear-gradient(90deg, var(--yellow), var(--blue)); }
+
+/* Inline bar */
+.bar-wrap { background: var(--surface3); border-radius: 99px; height: 5px; overflow: hidden; width: 120px; }
+.bar-fill { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+
+/* Buttons */
+.btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+
+.btn-yellow { background: var(--yellow); color: #000; }
+.btn-yellow:hover { background: #f5d060; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(240,192,64,0.3); }
+.btn-yellow:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { border-color: var(--yellow); color: var(--yellow); }
+
+.btn-icon {
+  width: 32px; height: 32px; padding: 0;
+  border-radius: 8px;
+  justify-content: center;
+}
+
+/* Input */
+.input {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 9px 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--yellow); }
+.input::placeholder { color: var(--text-dim); }
+
+/* Tag */
+.tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  transition: all 0.2s;
+}
+
+.tag-remove {
+  cursor: pointer; color: var(--text-dim);
+  font-size: 15px; line-height: 1;
+  transition: color 0.15s; margin-left: 2px;
+}
+.tag-remove:hover { color: var(--red); }
+
+/* File pill */
+.file-pill {
+  display: none;
+  align-items: center; gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.file-pill.show { display: flex; }
+
+/* Grand total */
+.grand-total {
+  background: linear-gradient(135deg, rgba(240,192,64,0.08) 0%, rgba(79,142,247,0.05) 100%);
+  border: 1px solid rgba(240,192,64,0.25);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  display: flex; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+
+.gt-main .gt-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 4px; }
+.gt-main .gt-number { font-family: var(--display); font-weight: 800; font-size: 56px; letter-spacing: -3px; color: var(--yellow); line-height: 1; }
+.gt-main .gt-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+.gt-items { display: flex; gap: 24px; flex-wrap: wrap; }
+.gt-item { text-align: center; }
+.gt-item-val { font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: -1px; }
+.gt-item-key { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-top: 2px; }
+
+/* Status badge */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.badge-yellow { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(240,192,64,0.25); }
+.badge-green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(45,212,191,0.25); }
+.badge-blue   { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(79,142,247,0.25); }
+.badge-red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(248,113,113,0.25); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(251,146,60,0.25); }
+
+/* Legend table */
+.legend-table { width: 100%; border-collapse: collapse; }
+.legend-table td { padding: 10px 14px; vertical-align: top; border-bottom: 1px solid var(--border); font-size: 13px; }
+.legend-table tr:last-child td { border-bottom: none; }
+.legend-table .sym-code { font-family: var(--mono); font-weight: 500; font-size: 13px; }
+.legend-table .sym-color { width: 10px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 12px; color: var(--text);
+  z-index: 9999;
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 300px;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* Alert */
+.alert {
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 12px;
+  margin-bottom: 16px;
+  display: flex; align-items: flex-start; gap: 10px;
+  line-height: 1.6;
+}
+.alert-info { background: var(--blue-dim); border: 1px solid rgba(79,142,247,0.2); color: var(--blue); }
+.alert-warn { background: var(--yellow-dim); border: 1px solid rgba(240,192,64,0.2); color: var(--yellow); }
+
+/* Devis table */
+.devis-total {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 16px;
+  border: 1px solid var(--border2);
+}
+.devis-total .total-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); }
+.devis-total .total-val { font-family: var(--display); font-weight: 800; font-size: 28px; color: var(--green); letter-spacing: -1px; }
+
+/* Quantity editable */
+.qty-input {
+  width: 64px;
+  text-align: center;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--yellow);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 5px 8px;
+  outline: none;
+}
+.qty-input:focus { border-color: var(--yellow); }
+
+/* Unit price */
+.unit-input {
+  width: 80px;
+  text-align: right;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 5px 8px;
+  outline: none;
+}
+.unit-input:focus { border-color: var(--green); }
+
+/* Toolbar */
+.toolbar {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 20px;
+}
+
+/* Checklist */
+.checklist { display: flex; flex-direction: column; gap: 8px; }
+.check-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.check-item:hover { border-color: var(--border2); }
+.check-item input[type=checkbox] { accent-color: var(--yellow); width: 15px; height: 15px; margin-top: 1px; flex-shrink: 0; }
+.check-item label { cursor: pointer; line-height: 1.5; }
+.check-item label strong { display: block; font-size: 13px; color: var(--text); margin-bottom: 2px; }
+.check-item label span { font-size: 11px; color: var(--text-muted); }
+
+/* Info cards */
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.info-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.info-card .ic-icon { font-size: 24px; margin-bottom: 10px; }
+.info-card .ic-title { font-family: var(--display); font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.info-card .ic-body { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .page { padding: 20px 16px 48px; }
+  .cards-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { animation: spin 1s linear infinite; }
+
+/* Fade in */
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.fade-up { animation: fadeUp 0.4s ease forwards; opacity: 0; }
+
+/* Print */
+@media print {
+  .sidebar, .toolbar, .btn, .drop-zone, #page-import { display: none !important; }
+  .page { display: block !important; padding: 0; }
+  body::before { display: none; }
+}
 </style>
 </head>
 <body>
-<div class="wrapper">
+<div class="app">
 
-  <!-- HEADER -->
-  <header>
-    <div class="logo-block">
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-badge">
       <div class="logo-icon">Ω</div>
-      <div class="logo-text">
-        <h1>ÉlectoCount</h1>
-        <p>Comptage automatique de symboles — Plans électriques</p>
-      </div>
+      <div class="logo-name">Électo<span>Count</span></div>
     </div>
-    <span class="badge">v1.0 · DCE/ICT</span>
-  </header>
+    <div class="logo-tagline">Pro · Plans Électriques</div>
+  </div>
 
-  <!-- DROP ZONE -->
+  <nav class="nav">
+    <div class="nav-section">Analyse</div>
+    <div class="nav-item active" onclick="showPage('import')">
+      <span class="nav-icon">📂</span> Import PDF
+    </div>
+    <div class="nav-item" onclick="showPage('comptage')">
+      <span class="nav-icon">🔢</span> Comptage
+      <span class="nav-badge" id="nav-badge-comptage">—</span>
+    </div>
+    <div class="nav-item" onclick="showPage('zones')">
+      <span class="nav-icon">🗺</span> Zones
+    </div>
+    <div class="nav-item" onclick="showPage('cables')">
+      <span class="nav-icon">〰</span> Câbles & CDC
+    </div>
+
+    <div class="nav-section">Métier</div>
+    <div class="nav-item" onclick="showPage('devis')">
+      <span class="nav-icon">📋</span> Estimatif
+    </div>
+    <div class="nav-item" onclick="showPage('checklist')">
+      <span class="nav-icon">✓</span> Checklist DCE
+    </div>
+    <div class="nav-item" onclick="showPage('legende')">
+      <span class="nav-icon">📖</span> Légende
+    </div>
+    <div class="nav-item" onclick="showPage('rapport')">
+      <span class="nav-icon">📄</span> Rapport
+    </div>
+
+    <div class="nav-section">Paramètres</div>
+    <div class="nav-item" onclick="showPage('symboles')">
+      <span class="nav-icon">⚙</span> Symboles
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    v2.0 · DCE/ICT/EXE<br>
+    Plans CFO · CFA · SSI · VDI
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<main class="main">
+
+<!-- ════ PAGE : IMPORT ════ -->
+<div class="page active" id="page-import">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Import <span>PDF</span></div>
+      <div class="page-subtitle">Chargez votre plan électrique — CFO, CFA, SSI, VDI, courants forts/faibles</div>
+    </div>
+  </div>
+
   <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-    <div class="drop-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    <div class="drop-zone-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
       </svg>
     </div>
-    <div class="drop-title">Déposer votre plan PDF ici</div>
-    <div class="drop-sub">
-      ou <strong>cliquer pour sélectionner</strong> · Fichier PDF uniquement<br>
-      Plans courants forts/faibles, CFO/CFA, SSI, VDI…
-    </div>
-    <input type="file" id="file-input" accept=".pdf,application/pdf">
+    <h3>Glisser-déposer votre plan PDF</h3>
+    <p>ou <strong>cliquer pour sélectionner</strong><br>
+    PDF · Plans électriques DCE / ICT / EXE<br>
+    Plans courants forts/faibles, CFO/CFA, SSI, VDI, BMS…</p>
+    <input type="file" id="file-input" accept=".pdf,application/pdf" style="display:none" multiple>
   </div>
 
-  <!-- FILE INFO -->
-  <div class="file-info" id="file-info">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  <div class="file-pill" id="file-pill">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2">
       <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
     </svg>
-    <span class="file-name" id="file-name-display"></span>
-    <span id="file-pages" style="margin-left:auto;"></span>
+    <span id="file-pill-name" style="color:var(--text);font-weight:500"></span>
+    <span id="file-pill-pages" style="margin-left:auto"></span>
   </div>
 
-  <!-- SYMBOLES CONFIG -->
-  <div class="config-section">
-    <div class="section-title">Symboles à rechercher</div>
-    <div class="symbols-grid" id="symbols-grid"></div>
-    <div class="add-symbol-row">
-      <input type="text" class="input-field" id="new-symbol" placeholder="ex: PT1, PA1…" maxlength="20"
-        onkeydown="if(event.key==='Enter') addSymbol()">
-      <button class="btn btn-primary" onclick="addSymbol()">+ Ajouter</button>
-      <button class="btn btn-secondary" onclick="resetSymbols()">Réinitialiser</button>
-    </div>
+  <div class="progress-wrap" id="progress-wrap" style="display:none;margin-bottom:8px">
+    <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);text-align:center;display:none;margin-bottom:16px" id="progress-label">Analyse…</div>
+
+  <div style="margin-top:20px">
+    <button class="btn btn-yellow" id="btn-run" onclick="runAnalysis()" disabled style="width:100%;justify-content:center;padding:14px;font-size:14px;border-radius:12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      Lancer l'analyse complète
+    </button>
   </div>
 
-  <!-- PROGRESS -->
-  <div class="progress-bar-wrap" id="progress-wrap">
-    <div class="progress-bar-fill" id="progress-fill"></div>
-  </div>
-  <div class="progress-label" id="progress-label">Analyse en cours…</div>
-
-  <!-- LAUNCH -->
-  <button class="btn btn-run" id="btn-run" onclick="runAnalysis()" disabled>
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-    </svg>
-    Lancer le comptage
-  </button>
-
-  <!-- RESULTS -->
-  <div id="results">
-
-    <div class="results-header">
-      <div class="results-title">Résultats <span id="results-filename-short"></span></div>
-      <div class="results-meta" id="results-meta"></div>
-    </div>
-
-    <!-- GRAND TOTAL -->
-    <div class="grand-total" id="grand-total-block">
-      <div>
-        <div class="gt-label">Total général</div>
-        <div class="gt-value" id="gt-value">—</div>
-        <div class="gt-desc" id="gt-desc"></div>
+  <!-- INFO CARDS -->
+  <div style="margin-top:32px">
+    <div class="section-title">Ce que l'outil analyse</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="ic-icon">🔌</div>
+        <div class="ic-title">Prises & points de tirage</div>
+        <div class="ic-body">PT1, PT2, PCS, PA1 — comptage exhaustif par zone et par page, avec détail ligne par ligne.</div>
       </div>
-      <div class="gt-breakdown" id="gt-breakdown"></div>
+      <div class="info-card">
+        <div class="ic-icon">🌐</div>
+        <div class="ic-title">Réseau VDI / data</div>
+        <div class="ic-body">RJ45, fibre, prises téléphone, baies de brassage — identification et localisation.</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-icon">〰</div>
+        <div class="ic-title">Chemins de câbles</div>
+        <div class="ic-body">CDC CFO, CFA, SSI, Opérateur — dimensions (200x30, 300x30…) et quantitatif métré.</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-icon">⚡</div>
+        <div class="ic-title">Tableaux électriques</div>
+        <div class="ic-body">TD, TGBT, armoires — repérage des tableaux divisionnaires et colonnes montantes.</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-icon">🚨</div>
+        <div class="ic-title">SSI / Sécurité</div>
+        <div class="ic-body">Détecteurs, déclencheurs, CMSI — symboles sécurité incendie et courants faibles.</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-icon">📋</div>
+        <div class="ic-title">Estimatif automatique</div>
+        <div class="ic-body">Génération d'un bordereau quantitatif avec prix unitaires paramétrables.</div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- SUMMARY CARDS -->
-    <div class="summary-cards" id="summary-cards"></div>
-
-    <!-- DETAIL TABLES per symbol -->
-    <div id="detail-tables"></div>
-
-    <!-- NO RESULTS -->
-    <div class="no-results" id="no-results">Aucun symbole trouvé dans ce document.</div>
-
-    <!-- EXPORT -->
-    <div class="export-row">
-      <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
-      <button class="btn btn-secondary" onclick="exportJSON()">⬇ Export JSON</button>
-      <button class="btn btn-secondary" onclick="copyReport()">📋 Copier le rapport</button>
+<!-- ════ PAGE : COMPTAGE ════ -->
+<div class="page" id="page-comptage">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Résultats <span>Comptage</span></div>
+      <div class="page-subtitle" id="comptage-meta">Chargez un PDF pour commencer</div>
     </div>
-
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="export-btns" style="display:none">
+      <button class="btn btn-ghost" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-ghost" onclick="exportJSON()">⬇ JSON</button>
+    </div>
   </div>
 
+  <div id="no-analysis" class="alert alert-info">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Aucune analyse disponible. Importez un PDF et lancez l'analyse.
+  </div>
+
+  <div id="comptage-results" style="display:none">
+    <!-- Grand total -->
+    <div class="grand-total" id="grand-total">
+      <div class="gt-main">
+        <div class="gt-label">Total général</div>
+        <div class="gt-number" id="gt-number">0</div>
+        <div class="gt-sub" id="gt-sub"></div>
+      </div>
+      <div class="gt-items" id="gt-items"></div>
+    </div>
+
+    <!-- Cards -->
+    <div class="section-title">Synthèse par symbole</div>
+    <div class="cards-grid" id="summary-cards"></div>
+
+    <!-- Tables per symbol -->
+    <div class="section-title">Détail par page</div>
+    <div id="detail-tables"></div>
+  </div>
+</div>
+
+<!-- ════ PAGE : ZONES ════ -->
+<div class="page" id="page-zones">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Analyse <span>par Zone</span></div>
+      <div class="page-subtitle">Répartition des équipements par zone / axe du bâtiment</div>
+    </div>
+  </div>
+
+  <div id="no-zones" class="alert alert-info">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Aucune analyse disponible. Importez un PDF et lancez l'analyse.
+  </div>
+
+  <div id="zones-results" style="display:none">
+    <div class="section-title">Répartition par zone détectée</div>
+    <div class="panel">
+      <table>
+        <thead><tr>
+          <th>Zone</th>
+          <th>Symbole</th>
+          <th>Quantité</th>
+          <th>% du total</th>
+          <th>Distribution</th>
+        </tr></thead>
+        <tbody id="zones-tbody"></tbody>
+      </table>
+    </div>
+    <div id="zones-heat" style="margin-top:20px"></div>
+  </div>
+</div>
+
+<!-- ════ PAGE : CABLES ════ -->
+<div class="page" id="page-cables">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Câbles & <span>Chemins de câbles</span></div>
+      <div class="page-subtitle">CDC CFO · CFA · SSI · Opérateur — dimensions et réseaux</div>
+    </div>
+  </div>
+
+  <div id="no-cables" class="alert alert-info">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Aucune analyse disponible. Importez un PDF et lancez l'analyse.
+  </div>
+
+  <div id="cables-results" style="display:none">
+    <div class="section-title">Chemins de câbles identifiés</div>
+    <div class="panel" style="margin-bottom:20px">
+      <table>
+        <thead><tr><th>Réseau</th><th>Occurrences</th><th>Description</th><th>Statut</th></tr></thead>
+        <tbody id="cdc-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="section-title">Dimensions de chemins de câbles</div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Dimension</th><th>Occurrences</th><th>Section (cm²)</th><th>Usage typique</th><th>Répartition</th></tr></thead>
+        <tbody id="dims-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE : DEVIS ════ -->
+<div class="page" id="page-devis">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Estimatif <span>Quantitatif</span></div>
+      <div class="page-subtitle">Bordereau automatique — ajustez les prix unitaires et quantités</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="exportDevisCSV()">⬇ Export CSV</button>
+      <button class="btn btn-ghost" onclick="printDevis()">🖨 Imprimer</button>
+    </div>
+  </div>
+
+  <div class="alert alert-warn" style="margin-bottom:20px">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    Prix indicatifs. Cliquez sur un prix unitaire pour le modifier selon votre bordereau.
+  </div>
+
+  <div id="no-devis" class="alert alert-info">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Aucune analyse disponible. Importez un PDF et lancez l'analyse.
+  </div>
+
+  <div id="devis-results" style="display:none">
+    <div class="panel">
+      <table>
+        <thead><tr>
+          <th>Réf.</th>
+          <th>Désignation</th>
+          <th>Unité</th>
+          <th>Qté détectée</th>
+          <th>Qté retenue</th>
+          <th>P.U. (€ HT)</th>
+          <th>Total HT</th>
+        </tr></thead>
+        <tbody id="devis-tbody"></tbody>
+      </table>
+    </div>
+    <div class="devis-total">
+      <div>
+        <div class="total-label">Total estimatif HT</div>
+        <div class="total-val" id="devis-total-val">0,00 €</div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--text-muted);font-family:var(--mono)">
+        TVA 20% : <span id="devis-tva">0,00 €</span><br>
+        TTC : <span id="devis-ttc" style="color:var(--text);font-weight:600">0,00 €</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE : CHECKLIST ════ -->
+<div class="page" id="page-checklist">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Checklist <span>DCE</span></div>
+      <div class="page-subtitle">Points de vérification pour la réponse à appel d'offres électricité</div>
+    </div>
+    <span id="checklist-progress-badge" class="badge badge-yellow">0 / 0</span>
+  </div>
+
+  <div id="checklist-container">
+    <!-- dynamically built -->
+  </div>
+</div>
+
+<!-- ════ PAGE : LÉGENDE ════ -->
+<div class="page" id="page-legende">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Légende <span>Symboles</span></div>
+      <div class="page-subtitle">Dictionnaire des symboles électriques — plans courants forts & faibles</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:20px">
+    <input class="input" id="legend-search" placeholder="Rechercher un symbole…" style="width:260px" oninput="filterLegend(this.value)">
+  </div>
+
+  <!-- CFO -->
+  <div class="section-title">Courants Forts (CFO)</div>
+  <div class="panel" style="margin-bottom:20px">
+    <table class="legend-table" id="legend-cfo"></table>
+  </div>
+
+  <!-- CFA -->
+  <div class="section-title">Courants Faibles (CFA / VDI / SSI)</div>
+  <div class="panel" style="margin-bottom:20px">
+    <table class="legend-table" id="legend-cfa"></table>
+  </div>
+
+  <!-- CDC -->
+  <div class="section-title">Chemins de câbles & Infrastructure</div>
+  <div class="panel">
+    <table class="legend-table" id="legend-cdc"></table>
+  </div>
+</div>
+
+<!-- ════ PAGE : RAPPORT ════ -->
+<div class="page" id="page-rapport">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Rapport <span>Complet</span></div>
+      <div class="page-subtitle">Synthèse exportable — copier/coller vers Word, Excel ou email</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="copyRapport()">📋 Copier</button>
+      <button class="btn btn-ghost" onclick="window.print()">🖨 Imprimer</button>
+    </div>
+  </div>
+
+  <div id="no-rapport" class="alert alert-info">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Aucune analyse disponible. Importez un PDF et lancez l'analyse.
+  </div>
+
+  <div id="rapport-content" style="display:none">
+    <div class="panel">
+      <div class="panel-body">
+        <pre id="rapport-text" style="font-family:var(--mono);font-size:11px;color:var(--text);white-space:pre-wrap;line-height:1.8"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE : SYMBOLES ════ -->
+<div class="page" id="page-symboles">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Configuration <span>Symboles</span></div>
+      <div class="page-subtitle">Personnalisez les symboles à rechercher selon votre plan</div>
+    </div>
+  </div>
+
+  <div class="section-title">Symboles actifs</div>
+  <div class="panel" style="margin-bottom:20px">
+    <div class="panel-body">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px" id="symbols-tags"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input class="input" id="new-sym-input" placeholder="Nouveau symbole (ex: DM1)" style="width:180px"
+          onkeydown="if(event.key==='Enter')addSymbol()">
+        <input class="input" id="new-sym-desc" placeholder="Description (optionnel)" style="width:220px"
+          onkeydown="if(event.key==='Enter')addSymbol()">
+        <button class="btn btn-yellow" onclick="addSymbol()">+ Ajouter</button>
+        <button class="btn btn-ghost" onclick="resetSymbols()">Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Catégories prédéfinies</div>
+  <div class="info-grid">
+    <div class="info-card" style="cursor:pointer" onclick="addPreset('CFO')">
+      <div class="ic-icon">🔌</div>
+      <div class="ic-title">Courants Forts</div>
+      <div class="ic-body" style="font-family:var(--mono);font-size:11px">PT1 · PT2 · PT3 · PCS · PC · PCR · PDB · PDL</div>
+    </div>
+    <div class="info-card" style="cursor:pointer" onclick="addPreset('CFA')">
+      <div class="ic-icon">📡</div>
+      <div class="ic-title">Courants Faibles</div>
+      <div class="ic-body" style="font-family:var(--mono);font-size:11px">PA1 · RJ45 · VDI · TEL · TV · HDMI · USB</div>
+    </div>
+    <div class="info-card" style="cursor:pointer" onclick="addPreset('SSI')">
+      <div class="ic-icon">🚨</div>
+      <div class="ic-title">SSI / Sécurité</div>
+      <div class="ic-body" style="font-family:var(--mono);font-size:11px">DI · DS · DM · DCM · CMSI · BI · DAS</div>
+    </div>
+    <div class="info-card" style="cursor:pointer" onclick="addPreset('ECLAIRAGE')">
+      <div class="ic-icon">💡</div>
+      <div class="ic-title">Éclairage</div>
+      <div class="ic-body" style="font-family:var(--mono);font-size:11px">LUM · ECS · EVS · BT · DA · BAES · BAPS</div>
+    </div>
+  </div>
+</div>
+
+</main>
 </div>
 
 <!-- TOAST -->
@@ -792,308 +1063,756 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-// ── PDF.js worker ──────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ── State ──────────────────────────────────────────────────────
-const COLORS = ['#f0c040','#3b82f6','#10b981','#f472b6','#a78bfa','#fb923c','#34d399','#60a5fa','#fbbf24','#e879f9'];
-const DEFAULT_SYMBOLS = ['PT1','PA1','PCS','PT2','RJ45'];
+// ── CONSTANTS ────────────────────────────────────────────────
+const COLORS = ['#f0c040','#4f8ef7','#2dd4bf','#a78bfa','#fb923c','#f472b6','#22d3ee','#f87171','#86efac','#fcd34d'];
 
-let symbols = [...DEFAULT_SYMBOLS];
+const SYMBOL_LIBRARY = {
+  // CFO
+  'PT1':  { cat:'CFO', desc:'Prise de courant 2P+T 16A type 1', unit:'U', pu:45 },
+  'PT2':  { cat:'CFO', desc:'Prise de courant 2P+T 16A type 2 (double)', unit:'U', pu:65 },
+  'PT3':  { cat:'CFO', desc:'Prise de courant 3P+T 32A', unit:'U', pu:120 },
+  'PCS':  { cat:'CFO', desc:'Prise courant secouru / ondulé 16A', unit:'U', pu:80 },
+  'PC':   { cat:'CFO', desc:'Prise de courant standard', unit:'U', pu:40 },
+  'PCR':  { cat:'CFO', desc:'Prise courant renforcé', unit:'U', pu:95 },
+  // CFA / VDI
+  'PA1':  { cat:'CFA', desc:'Prise audiovisuelle / data type 1', unit:'U', pu:55 },
+  'RJ45': { cat:'VDI', desc:'Prise réseau RJ45 Cat.6A', unit:'U', pu:85 },
+  'VDI':  { cat:'VDI', desc:'Prise VDI double (RJ45 + TEL)', unit:'U', pu:110 },
+  'TEL':  { cat:'CFA', desc:'Prise téléphone RJ11', unit:'U', pu:35 },
+  'TV':   { cat:'CFA', desc:'Prise TV coaxiale', unit:'U', pu:40 },
+  // SSI
+  'DI':   { cat:'SSI', desc:'Détecteur ionique fumée', unit:'U', pu:65 },
+  'DS':   { cat:'SSI', desc:'Détecteur de fumée optique', unit:'U', pu:75 },
+  'DM':   { cat:'SSI', desc:'Détecteur de mouvement', unit:'U', pu:90 },
+  'BI':   { cat:'SSI', desc:'Bouton poussoir d\'alarme incendie', unit:'U', pu:55 },
+  'DAS':  { cat:'SSI', desc:'Dispositif Actionné de Sécurité', unit:'U', pu:180 },
+  'BAES': { cat:'SSI', desc:'Bloc Autonome Éclairage de Sécurité', unit:'U', pu:95 },
+  // Éclairage
+  'LUM':  { cat:'ECL', desc:'Luminaire (type selon plan)', unit:'U', pu:120 },
+  'ECS':  { cat:'ECL', desc:'Éclairage de sécurité', unit:'U', pu:85 },
+  'BAPS': { cat:'ECL', desc:'Bloc Autonome Portable de Sécurité', unit:'U', pu:65 },
+};
+
+const PRESETS = {
+  CFO:       ['PT1','PT2','PT3','PCS','PC','PCR'],
+  CFA:       ['PA1','RJ45','VDI','TEL','TV'],
+  SSI:       ['DI','DS','DM','BI','DAS','BAES'],
+  ECLAIRAGE: ['LUM','ECS','BAPS'],
+};
+
+const CDC_TYPES = [
+  { code:'CDC CFO',       label:'Chemins de câbles Courants Forts', color:'#f87171' },
+  { code:'CDC CFA',       label:'Chemins de câbles Courants Faibles', color:'#4f8ef7' },
+  { code:'CDC SSI',       label:'Chemins de câbles SSI Incendie', color:'#f0c040' },
+  { code:'CDC OPERATEUR', label:'Chemins de câbles Opérateur Télécom', color:'#a78bfa' },
+  { code:'CDC BMS',       label:'Chemins de câbles GTB/BMS', color:'#2dd4bf' },
+];
+
+const LEGEND_DATA = {
+  cfo: [
+    { sym:'PT1',  color:'#f0c040', label:'Prise de courant 2P+T 16A', desc:'Prise standard bureau/open-space' },
+    { sym:'PT2',  color:'#f0c040', label:'Prise de courant double 2P+T 16A', desc:'Prise double, souvent en baie technique' },
+    { sym:'PT3',  color:'#f0c040', label:'Prise industrielle 3P+T 32A', desc:'Alimentation machines / armoires' },
+    { sym:'PCS',  color:'#fb923c', label:'Prise courant secouru', desc:'Alimentée par onduleur ou groupe électrogène' },
+    { sym:'PCR',  color:'#fb923c', label:'Prise courant renforcé', desc:'Circuit dédié 20A, informatique critique' },
+    { sym:'TGBT', color:'#f87171', label:'Tableau Général Basse Tension', desc:'Distribution principale du bâtiment' },
+    { sym:'TD',   color:'#f87171', label:'Tableau Divisionnaire', desc:'Distribution secondaire par zone/niveau' },
+    { sym:'TD-N01-O', color:'#f87171', label:'TD N01 Opérateur', desc:'Tableau dédié réseau opérateur télécom' },
+  ],
+  cfa: [
+    { sym:'PA1',  color:'#4f8ef7', label:'Prise audiovisuelle type 1', desc:'Prise data / audio-vidéo' },
+    { sym:'RJ45', color:'#a78bfa', label:'Prise réseau RJ45 Cat.6A', desc:'Réseau informatique, VoIP, IoT' },
+    { sym:'VDI',  color:'#a78bfa', label:'Prise VDI double', desc:'Voix-Données-Images (RJ45 + TEL)' },
+    { sym:'TEL',  color:'#2dd4bf', label:'Prise téléphonique RJ11', desc:'Ligne téléphonique analogique' },
+    { sym:'TV',   color:'#2dd4bf', label:'Prise TV coaxiale', desc:'Signal TV hertzien / TNT / câble' },
+    { sym:'BAES', color:'#f0c040', label:'Bloc Autonome Éclairage Sécurité', desc:'Obligatoire voies d\'évacuation' },
+    { sym:'DI',   color:'#f87171', label:'Détecteur ionique', desc:'Détection fumée par ionisation' },
+    { sym:'DS',   color:'#f87171', label:'Détecteur de fumée optique', desc:'Détection particules de combustion' },
+    { sym:'BI',   color:'#f87171', label:'Bouton d\'alarme incendie', desc:'Déclencheur manuel incendie' },
+  ],
+  cdc: [
+    { sym:'CDC CFO',    color:'#f87171', label:'Chemin de câbles Courants Forts', desc:'Rouge — alimentation électrique 230/400V' },
+    { sym:'CDC CFA',    color:'#4f8ef7', label:'Chemin de câbles Courants Faibles', desc:'Bleu — signaux faibles, data, téléphonie' },
+    { sym:'CDC SSI',    color:'#f0c040', label:'Chemin de câbles SSI', desc:'Jaune — réseau sécurité incendie' },
+    { sym:'CDC OPE',    color:'#a78bfa', label:'Chemin de câbles Opérateur', desc:'Violet — télécoms opérateur' },
+    { sym:'200x30',     color:'#5a6480', label:'Section 200×30 mm', desc:'Câblage courant, bureaux' },
+    { sym:'300x30',     color:'#5a6480', label:'Section 300×30 mm', desc:'Distribution secondaire' },
+    { sym:'450x100',    color:'#5a6480', label:'Section 450×100 mm', desc:'Distribution principale / colonne montante' },
+    { sym:'Colonne montante', color:'#2dd4bf', label:'Colonne montante', desc:'Liaison verticale entre niveaux — gaine technique' },
+  ],
+};
+
+const CHECKLIST_ITEMS = [
+  { cat:'Lecture du plan', items:[
+    { label:'Identifier le niveau et la zone concernés', desc:'R+1 plancher bas, zone Nieuport / Gallieni' },
+    { label:'Repérer l\'orientation du plan (Nord)', desc:'Vérifier la flèche Nord ou l\'orientation par rapport au bâtiment' },
+    { label:'Lire l\'échelle indiquée', desc:'1:100 — 1 cm sur le plan = 1 m réel' },
+    { label:'Identifier le tableau source (TD, TGBT)', desc:'TD-N01-O, emplacement gaine technique' },
+    { label:'Repérer les colonnes montantes', desc:'OPE, CFO, CFA, SSI — points de pénétration' },
+  ]},
+  { cat:'Comptage & Quantitatif', items:[
+    { label:'Compter les prises PT1 (courant normal)', desc:'Vérifier la cohérence avec le programme' },
+    { label:'Compter les prises PCS (courant secouru)', desc:'Ratio typique 1 PCS pour 3 PT1 en bureaux' },
+    { label:'Compter les prises PA1 / VDI / RJ45', desc:'Points data — vérifier le nombre de baies de brassage nécessaires' },
+    { label:'Compter les détecteurs SSI', desc:'DI, DS — vérifier la couverture réglementaire (IT246)' },
+    { label:'Recenser les chemins de câbles et dimensions', desc:'Vérifier les réserves de remplissage (30% minimum)' },
+  ]},
+  { cat:'Vérifications réglementaires', items:[
+    { label:'Vérifier conformité NF C 15-100', desc:'Densité de prises, circuits dédiés, protection différentielle' },
+    { label:'Vérifier les dégagements maintenance tableaux', desc:'Minimum 0,80 m devant les tableaux' },
+    { label:'Contrôler la continuité des chemins de câbles', desc:'Pas de coupure non justifiée — liaisons équipotentielles' },
+    { label:'Identifier les locaux ATEX ou humides', desc:'Matériel adapté et protection IP/IK renforcée' },
+    { label:'Vérifier présence des BAES sur voies d\'évac.', desc:'Conforme règlement ERP / Code du travail' },
+  ]},
+  { cat:'Chiffrage & Offre', items:[
+    { label:'Comparer les quantités au CCTP', desc:'Signaler toute incohérence plan / descriptif' },
+    { label:'Calculer le métré câbles (CFO + CFA + SSI)', desc:'Longueurs + chutes + réserves 15%' },
+    { label:'Évaluer le temps de pose', desc:'Ratios habituels : PT1 = 1h, CDC = 0.5h/ml, TD = 4-8h' },
+    { label:'Vérifier les interfaces avec autres lots', desc:'Gros œuvre (réservations), CVC (alimentations), SSI (coordination)' },
+    { label:'Identifier les prestations hors limites', desc:'Génération secours, onduleurs, GTB — vérifier le périmètre' },
+  ]},
+];
+
+// ── STATE ────────────────────────────────────────────────────
+let symbols = ['PT1','PA1','PCS','RJ45','PT2'];
+let symbolDescs = {};
+symbols.forEach(s => { symbolDescs[s] = SYMBOL_LIBRARY[s]?.desc || s; });
+
 let pdfFile = null;
 let analysisResults = null;
-let totalPages = 0;
+let zoneResults = null;
+let cdcResults = null;
+let dimsResults = null;
+let totalPdfPages = 0;
+let fullText = '';
 
-// ── Symbol tags ────────────────────────────────────────────────
-function renderSymbols() {
-  const grid = document.getElementById('symbols-grid');
-  grid.innerHTML = '';
-  symbols.forEach((sym, i) => {
-    const tag = document.createElement('div');
-    tag.className = 'symbol-tag';
-    tag.innerHTML = `
-      <span class="tag-color" style="background:${COLORS[i % COLORS.length]}"></span>
-      <span>${sym}</span>
-      <span class="tag-remove" onclick="removeSymbol(${i})">×</span>`;
-    grid.appendChild(tag);
+// ── NAVIGATION ───────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick')?.includes(id)) n.classList.add('active');
   });
 }
 
-function addSymbol() {
-  const input = document.getElementById('new-symbol');
-  const val = input.value.trim().toUpperCase();
-  if (!val) return;
-  if (symbols.includes(val)) { showToast('⚠ Ce symbole est déjà dans la liste'); input.value = ''; return; }
-  symbols.push(val);
-  input.value = '';
-  renderSymbols();
-}
-
-function removeSymbol(i) {
-  symbols.splice(i, 1);
-  renderSymbols();
-}
-
-function resetSymbols() {
-  symbols = [...DEFAULT_SYMBOLS];
-  renderSymbols();
-}
-
-// ── Drop Zone ──────────────────────────────────────────────────
+// ── FILE HANDLING ────────────────────────────────────────────
 const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
 dz.addEventListener('drop', e => {
   e.preventDefault(); dz.classList.remove('drag-over');
   const f = e.dataTransfer.files[0];
-  if (f && f.type === 'application/pdf') loadFile(f);
-  else showToast('⚠ Veuillez déposer un fichier PDF');
+  if (f?.type === 'application/pdf') loadFile(f);
+  else toast('⚠ Fichier PDF requis');
 });
-
 document.getElementById('file-input').addEventListener('change', e => {
   if (e.target.files[0]) loadFile(e.target.files[0]);
 });
 
 async function loadFile(file) {
   pdfFile = file;
-  document.getElementById('file-name-display').textContent = file.name;
-
-  // get page count
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-  totalPages = pdf.numPages;
-  document.getElementById('file-pages').textContent = `${totalPages} page${totalPages > 1 ? 's' : ''}`;
+  totalPdfPages = pdf.numPages;
 
-  const fi = document.getElementById('file-info');
-  fi.style.display = 'flex';
-
+  document.getElementById('file-pill-name').textContent = file.name;
+  document.getElementById('file-pill-pages').textContent = `${totalPdfPages} page${totalPdfPages > 1 ? 's' : ''}`;
+  document.getElementById('file-pill').classList.add('show');
   document.getElementById('btn-run').disabled = false;
-  document.getElementById('results').style.display = 'none';
-  showToast(`✓ ${file.name} chargé (${totalPages} page${totalPages>1?'s':''})`);
+  toast(`✓ ${file.name} chargé — ${totalPdfPages} page${totalPdfPages > 1 ? 's' : ''}`);
 }
 
-// ── Analysis ───────────────────────────────────────────────────
+// ── ANALYSIS ─────────────────────────────────────────────────
 async function runAnalysis() {
-  if (!pdfFile || symbols.length === 0) return;
-
+  if (!pdfFile) return;
   const btn = document.getElementById('btn-run');
   btn.disabled = true;
-  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity=".25"/><path d="M21 12a9 9 0 00-9-9"/></svg> Analyse en cours…`;
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinning"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity=".2"/><path d="M21 12a9 9 0 00-9-9"/></svg> Analyse en cours…`;
 
   const pw = document.getElementById('progress-wrap');
   const pf = document.getElementById('progress-fill');
   const pl = document.getElementById('progress-label');
-  pw.style.display = 'block';
-  pl.style.display = 'block';
+  pw.style.display = 'block'; pl.style.display = 'block';
 
   const ab = await pdfFile.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-  const numPages = pdf.numPages;
+  const n = pdf.numPages;
 
-  // Per-symbol, per-page counts
-  const results = {};
-  symbols.forEach(s => { results[s] = { total: 0, pages: {} }; });
+  const res = {};
+  symbols.forEach(s => res[s] = { total: 0, pages: {} });
 
-  for (let p = 1; p <= numPages; p++) {
-    pf.style.width = `${(p / numPages) * 100}%`;
-    pl.textContent = `Analyse de la page ${p} / ${numPages}…`;
+  const cdcCounts = {};
+  CDC_TYPES.forEach(c => cdcCounts[c.code] = 0);
+
+  const dimCounts = {};
+  let allText = '';
+
+  for (let p = 1; p <= n; p++) {
+    pf.style.width = `${(p/n)*100}%`;
+    pl.textContent = `Page ${p} / ${n}…`;
 
     const page = await pdf.getPage(p);
     const content = await page.getTextContent();
     const pageText = content.items.map(i => i.str).join(' ');
+    allText += '\n' + pageText;
 
     symbols.forEach(sym => {
-      const regex = new RegExp(`\\b${escapeRegex(sym)}\\b`, 'g');
-      const matches = (pageText.match(regex) || []).length;
-      if (matches > 0) {
-        results[sym].total += matches;
-        results[sym].pages[p] = (results[sym].pages[p] || 0) + matches;
-      }
+      const rx = new RegExp(`\\b${escRx(sym)}\\b`, 'g');
+      const m = (pageText.match(rx) || []).length;
+      if (m > 0) { res[sym].total += m; res[sym].pages[p] = (res[sym].pages[p] || 0) + m; }
     });
+
+    CDC_TYPES.forEach(c => {
+      const rx = new RegExp(escRx(c.code), 'gi');
+      cdcCounts[c.code] += (pageText.match(rx) || []).length;
+    });
+
+    const dimRx = /(\d+)\s*mm\s*[x×]\s*(\d+)\s*mm/gi;
+    let dm;
+    while ((dm = dimRx.exec(pageText)) !== null) {
+      const key = `${dm[1]}x${dm[2]}`;
+      dimCounts[key] = (dimCounts[key] || 0) + 1;
+    }
   }
 
-  pw.style.display = 'none';
-  pl.style.display = 'none';
-
-  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Lancer le comptage`;
+  fullText = allText;
+  pw.style.display = 'none'; pl.style.display = 'none';
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Relancer l'analyse`;
   btn.disabled = false;
 
-  analysisResults = results;
-  renderResults(results, numPages);
+  analysisResults = res;
+  cdcResults = cdcCounts;
+  dimsResults = dimCounts;
+
+  // Zone detection from text
+  zoneResults = detectZones(allText, res);
+
+  renderComptage(res, n);
+  renderZones();
+  renderCables();
+  renderDevis();
+  renderRapport();
+  buildChecklist();
+
+  const total = Object.values(res).reduce((a,r) => a + r.total, 0);
+  document.getElementById('nav-badge-comptage').textContent = total;
+  toast(`✓ Analyse terminée — ${total} symboles trouvés`);
+  showPage('comptage');
 }
 
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function escRx(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function detectZones(text, res) {
+  const zones = {};
+  const zoneLabels = ['J','I','H','G','F','E','D','C','B','A'];
+  const lines = text.split('\n');
+  let curZone = '?';
+
+  lines.forEach(line => {
+    const zm = line.match(/^\s{0,8}([A-J])\s{1,4}[A-Z]/);
+    if (zm) curZone = zm[1];
+    symbols.forEach(sym => {
+      const rx = new RegExp(`\\b${escRx(sym)}\\b`, 'g');
+      const m = (line.match(rx) || []).length;
+      if (m > 0) {
+        if (!zones[curZone]) zones[curZone] = {};
+        zones[curZone][sym] = (zones[curZone][sym] || 0) + m;
+      }
+    });
+  });
+  return zones;
 }
 
-// ── Render Results ─────────────────────────────────────────────
-function renderResults(results, numPages) {
-  document.getElementById('results').style.display = 'block';
+// ── RENDER COMPTAGE ──────────────────────────────────────────
+function renderComptage(res, numPages) {
+  document.getElementById('no-analysis').style.display = 'none';
+  document.getElementById('comptage-results').style.display = 'block';
+  document.getElementById('export-btns').style.display = 'flex';
+  document.getElementById('comptage-meta').textContent =
+    `${pdfFile.name} · ${numPages} page${numPages>1?'s':''} · ${new Date().toLocaleString('fr-FR')}`;
 
-  const name = pdfFile.name.replace(/\.pdf$/i, '');
-  document.getElementById('results-filename-short').textContent = `— ${name}`;
-  document.getElementById('results-meta').textContent =
-    `${numPages} page${numPages>1?'s':''} · ${symbols.length} symbole${symbols.length>1?'s':''} · ${new Date().toLocaleString('fr-FR')}`;
+  const total = Object.values(res).reduce((a,r) => a + r.total, 0);
+  document.getElementById('gt-number').textContent = total.toLocaleString('fr-FR');
+  document.getElementById('gt-sub').textContent = `occurrences · ${numPages} page${numPages>1?'s':''} · ${symbols.length} symbole${symbols.length>1?'s':''}`;
 
-  // Grand total
-  const grandTotal = Object.values(results).reduce((a, r) => a + r.total, 0);
-  document.getElementById('gt-value').textContent = grandTotal.toLocaleString('fr-FR');
-  document.getElementById('gt-desc').textContent =
-    `occurrences trouvées sur ${numPages} page${numPages>1?'s':''}`;
-
-  // Breakdown per symbol
-  const breakdown = document.getElementById('gt-breakdown');
-  breakdown.innerHTML = '';
+  // Breakdown
+  const gti = document.getElementById('gt-items');
+  gti.innerHTML = '';
   symbols.forEach((sym, i) => {
-    const r = results[sym];
-    if (r.total === 0) return;
+    if (res[sym].total === 0) return;
     const el = document.createElement('div');
     el.className = 'gt-item';
-    el.innerHTML = `
-      <div class="gt-item-val" style="color:${COLORS[i % COLORS.length]}">${r.total}</div>
-      <div class="gt-item-key">${sym}</div>`;
-    breakdown.appendChild(el);
+    el.innerHTML = `<div class="gt-item-val" style="color:${COLORS[i%COLORS.length]}">${res[sym].total}</div><div class="gt-item-key">${sym}</div>`;
+    gti.appendChild(el);
   });
 
   // Summary cards
   const cards = document.getElementById('summary-cards');
   cards.innerHTML = '';
-  const maxVal = Math.max(...symbols.map(s => results[s].total));
   symbols.forEach((sym, i) => {
-    const r = results[sym];
+    const r = res[sym];
     const color = COLORS[i % COLORS.length];
-    const card = document.createElement('div');
-    card.className = 'summary-card';
-    card.style.setProperty('animation-delay', `${i * 60}ms`);
-    card.style.cssText += `--card-color:${color}`;
-    card.querySelector?.('') ;
-    card.innerHTML = `
-      <style>.summary-card:nth-child(${i+1})::before { background: ${color}; }</style>
-      <div class="card-symbol">
-        <span class="dot" style="background:${color}"></span>
-        ${sym}
-      </div>
-      <div class="card-count" style="color:${color}">${r.total}</div>
-      <div class="card-label">${r.total === 0 ? 'Non trouvé' : `occurrence${r.total > 1 ? 's' : ''}`}</div>`;
-    cards.appendChild(card);
+    const pct = total > 0 ? ((r.total/total)*100).toFixed(1) : 0;
+    const d = document.createElement('div');
+    d.className = 'card fade-up';
+    d.style.animationDelay = `${i*60}ms`;
+    d.innerHTML = `
+      <div class="card-top" style="background:${color}"></div>
+      <div class="card-label"><span class="dot" style="background:${color}"></span>${sym}</div>
+      <div class="card-value" style="color:${color}">${r.total}</div>
+      <div class="card-desc">${r.total === 0 ? '—' : `${pct}% du total · ${Object.keys(r.pages).length} page${Object.keys(r.pages).length>1?'s':''}`}</div>`;
+    cards.appendChild(d);
   });
 
   // Detail tables
-  const tables = document.getElementById('detail-tables');
-  tables.innerHTML = '';
-
+  const dt = document.getElementById('detail-tables');
+  dt.innerHTML = '';
   symbols.forEach((sym, i) => {
-    const r = results[sym];
+    const r = res[sym];
     if (r.total === 0) return;
     const color = COLORS[i % COLORS.length];
-    const pages = Object.entries(r.pages).sort((a, b) => Number(a[0]) - Number(b[0]));
-    const maxPage = Math.max(...pages.map(p => p[1]));
+    const pages = Object.entries(r.pages).sort((a,b) => +a[0] - +b[0]);
+    const maxP = Math.max(...pages.map(p => p[1]));
+    const lib = SYMBOL_LIBRARY[sym];
 
     const panel = document.createElement('div');
-    panel.className = 'detail-panel';
+    panel.className = 'panel';
     panel.style.marginBottom = '16px';
-
-    let rows = pages.map(([pg, cnt]) => `
-      <tr>
-        <td class="zone-cell" style="color:${color}">Page ${pg}</td>
-        <td class="count-cell">${cnt}</td>
-        <td>${((cnt / r.total) * 100).toFixed(1)} %</td>
-        <td class="bar-cell">
-          <div class="inline-bar">
-            <div class="inline-bar-fill" style="width:${(cnt/maxPage)*100}%; background:${color}"></div>
-          </div>
-        </td>
-      </tr>`).join('');
-
     panel.innerHTML = `
-      <div class="detail-panel-header">
-        <h3><span class="dot" style="background:${color}"></span>${sym} — ${r.total} occurrence${r.total>1?'s':''}</h3>
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">${pages.length} page${pages.length>1?'s':''} concernée${pages.length>1?'s':''}</span>
+      <div class="panel-header">
+        <h3><span class="dot" style="background:${color}"></span>${sym} — ${r.total} occurrence${r.total>1?'s':''}
+          <span class="badge" style="background:${color}18;color:${color};border-color:${color}40;margin-left:8px">${lib?.cat||'—'}</span>
+        </h3>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-muted)">${lib?.desc||''}</span>
       </div>
       <table>
-        <thead><tr>
-          <th>Page</th><th>Occurrences</th><th>% du total</th><th>Répartition</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
+        <thead><tr><th>Page</th><th>Occurrences</th><th>% du symbole</th><th>Répartition</th></tr></thead>
+        <tbody>${pages.map(([pg,cnt]) => `
+          <tr>
+            <td class="em" style="color:${color}">P.${pg}</td>
+            <td class="em">${cnt}</td>
+            <td style="color:var(--text-muted)">${((cnt/r.total)*100).toFixed(1)} %</td>
+            <td><div class="bar-wrap"><div class="bar-fill" data-w="${(cnt/maxP)*100}" style="background:${color};width:0%"></div></div></td>
+          </tr>`).join('')}
+        </tbody>
       </table>`;
-    tables.appendChild(panel);
+    dt.appendChild(panel);
   });
 
-  const noRes = document.getElementById('no-results');
-  noRes.style.display = grandTotal === 0 ? 'block' : 'none';
-
-  // Animate bars after DOM paint
   setTimeout(() => {
-    document.querySelectorAll('.inline-bar-fill').forEach(el => {
-      const w = el.style.width;
-      el.style.width = '0';
-      requestAnimationFrame(() => { el.style.width = w; });
+    document.querySelectorAll('.bar-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
     });
-  }, 100);
-
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  showToast(`✓ Comptage terminé — ${grandTotal} symboles trouvés`);
+  }, 150);
 }
 
-// ── Exports ────────────────────────────────────────────────────
-function exportCSV() {
-  if (!analysisResults) return;
-  let csv = 'Symbole,Page,Occurrences\n';
-  symbols.forEach(sym => {
-    const r = analysisResults[sym];
-    Object.entries(r.pages).sort((a,b)=>Number(a[0])-Number(b[0])).forEach(([pg, cnt]) => {
-      csv += `${sym},${pg},${cnt}\n`;
+// ── RENDER ZONES ─────────────────────────────────────────────
+function renderZones() {
+  document.getElementById('no-zones').style.display = 'none';
+  document.getElementById('zones-results').style.display = 'block';
+
+  const tbody = document.getElementById('zones-tbody');
+  tbody.innerHTML = '';
+
+  const zoneOrder = ['J','I','H','G','F','E','D','C','B','A','?'];
+  const allSymTotals = {};
+  symbols.forEach(s => { allSymTotals[s] = analysisResults[s].total; });
+
+  zoneOrder.forEach(zone => {
+    if (!zoneResults[zone]) return;
+    const zd = zoneResults[zone];
+    symbols.forEach((sym, i) => {
+      const cnt = zd[sym] || 0;
+      if (cnt === 0) return;
+      const pct = allSymTotals[sym] > 0 ? ((cnt/allSymTotals[sym])*100).toFixed(1) : 0;
+      const color = COLORS[i % COLORS.length];
+      tbody.innerHTML += `
+        <tr>
+          <td class="em" style="color:var(--yellow)">Zone ${zone}</td>
+          <td><span style="font-family:var(--mono);color:${color};font-weight:500">${sym}</span></td>
+          <td class="em">${cnt}</td>
+          <td style="color:var(--text-muted)">${pct} %</td>
+          <td><div class="bar-wrap" style="width:160px"><div class="bar-fill" data-w="${pct}" style="background:${color};width:0%"></div></div></td>
+        </tr>`;
     });
   });
-  download(csv, `electocount_${Date.now()}.csv`, 'text/csv');
-  showToast('✓ Export CSV téléchargé');
+
+  setTimeout(() => {
+    document.querySelectorAll('#zones-tbody .bar-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 200);
+}
+
+// ── RENDER CABLES ────────────────────────────────────────────
+function renderCables() {
+  document.getElementById('no-cables').style.display = 'none';
+  document.getElementById('cables-results').style.display = 'block';
+
+  // CDC table
+  const ct = document.getElementById('cdc-tbody');
+  ct.innerHTML = '';
+  CDC_TYPES.forEach(c => {
+    const cnt = cdcResults[c.code] || 0;
+    ct.innerHTML += `
+      <tr>
+        <td><span style="font-family:var(--mono);color:${c.color};font-weight:500">${c.code}</span></td>
+        <td class="em">${cnt}</td>
+        <td style="color:var(--text-muted)">${c.label}</td>
+        <td>${cnt > 0 ? `<span class="badge badge-green">Présent</span>` : `<span class="badge" style="background:var(--surface3);color:var(--text-muted)">Non détecté</span>`}</td>
+      </tr>`;
+  });
+
+  // Dims table
+  const dt2 = document.getElementById('dims-tbody');
+  dt2.innerHTML = '';
+  const dimEntries = Object.entries(dimsResults || {}).sort((a,b) => b[1] - a[1]);
+  const maxDim = dimEntries.length > 0 ? Math.max(...dimEntries.map(d => d[1])) : 1;
+  const dimUsage = {
+    '200x30': 'Câblage courant CFO/CFA bureaux',
+    '100x30': 'Distribution terminale CFA',
+    '300x30': 'Distribution secondaire CFO',
+    '450x100':'Colonne montante / distribution principale',
+    '400x100':'Distribution principale CFO',
+    '200x100':'Distribution principale CFA',
+    '100x100':'Réseau SSI dédié',
+  };
+  dimEntries.forEach(([dim, cnt]) => {
+    const parts = dim.split('x');
+    const section = parts.length === 2 ? ((+parts[0] * +parts[1]) / 100).toFixed(0) + ' cm²' : '—';
+    dt2.innerHTML += `
+      <tr>
+        <td><span style="font-family:var(--mono);color:var(--yellow);font-weight:500">${dim} mm</span></td>
+        <td class="em">${cnt}</td>
+        <td style="color:var(--text-muted)">${section}</td>
+        <td style="color:var(--text-muted);font-size:11px">${dimUsage[dim] || '—'}</td>
+        <td><div class="bar-wrap"><div class="bar-fill" style="background:var(--yellow);width:${(cnt/maxDim)*100}%"></div></div></td>
+      </tr>`;
+  });
+  if (dimEntries.length === 0) {
+    dt2.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:24px">Aucune dimension détectée</td></tr>';
+  }
+}
+
+// ── RENDER DEVIS ─────────────────────────────────────────────
+let devisData = [];
+
+function renderDevis() {
+  document.getElementById('no-devis').style.display = 'none';
+  document.getElementById('devis-results').style.display = 'block';
+
+  devisData = [];
+  symbols.forEach((sym, i) => {
+    const r = analysisResults[sym];
+    if (r.total === 0) return;
+    const lib = SYMBOL_LIBRARY[sym] || { desc: sym, unit: 'U', pu: 0 };
+    devisData.push({ sym, desc: lib.desc, unit: lib.unit, detected: r.total, qty: r.total, pu: lib.pu });
+  });
+
+  renderDevisTable();
+}
+
+function renderDevisTable() {
+  const tbody = document.getElementById('devis-tbody');
+  tbody.innerHTML = '';
+  let totalHT = 0;
+
+  devisData.forEach((row, i) => {
+    const color = COLORS[i % COLORS.length];
+    const lineTotal = row.qty * row.pu;
+    totalHT += lineTotal;
+    tbody.innerHTML += `
+      <tr>
+        <td><span style="font-family:var(--mono);color:${color};font-weight:500">${row.sym}</span></td>
+        <td style="font-size:12px;color:var(--text-muted)">${row.desc}</td>
+        <td style="font-family:var(--mono)">${row.unit}</td>
+        <td style="font-family:var(--mono);color:var(--text-muted)">${row.detected}</td>
+        <td><input class="qty-input" type="number" value="${row.qty}" min="0" data-idx="${i}" oninput="updateDevis(${i},'qty',this.value)"></td>
+        <td><input class="unit-input" type="number" value="${row.pu}" min="0" step="0.5" data-idx="${i}" oninput="updateDevis(${i},'pu',this.value)"></td>
+        <td style="font-family:var(--mono);color:var(--green);font-weight:500" id="line-total-${i}">${fmtEur(lineTotal)}</td>
+      </tr>`;
+  });
+
+  updateDevisTotals(totalHT);
+}
+
+function updateDevis(idx, field, val) {
+  devisData[idx][field] = parseFloat(val) || 0;
+  const lineTotal = devisData[idx].qty * devisData[idx].pu;
+  const el = document.getElementById(`line-total-${idx}`);
+  if (el) el.textContent = fmtEur(lineTotal);
+  const total = devisData.reduce((a, r) => a + r.qty * r.pu, 0);
+  updateDevisTotals(total);
+}
+
+function updateDevisTotals(ht) {
+  const tva = ht * 0.2;
+  document.getElementById('devis-total-val').textContent = fmtEur(ht);
+  document.getElementById('devis-tva').textContent = fmtEur(tva);
+  document.getElementById('devis-ttc').textContent = fmtEur(ht + tva);
+}
+
+function fmtEur(v) {
+  return v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+// ── RENDER RAPPORT ───────────────────────────────────────────
+function renderRapport() {
+  document.getElementById('no-rapport').style.display = 'none';
+  document.getElementById('rapport-content').style.display = 'block';
+
+  const d = new Date().toLocaleString('fr-FR');
+  const total = Object.values(analysisResults).reduce((a,r) => a + r.total, 0);
+  let txt = '';
+  txt += `╔══════════════════════════════════════════════════════════╗\n`;
+  txt += `║           ÉLECTOCOUNT PRO — RAPPORT D'ANALYSE            ║\n`;
+  txt += `╚══════════════════════════════════════════════════════════╝\n\n`;
+  txt += `Fichier    : ${pdfFile.name}\n`;
+  txt += `Date       : ${d}\n`;
+  txt += `Pages      : ${totalPdfPages}\n`;
+  txt += `Symboles   : ${symbols.join(', ')}\n\n`;
+  txt += `${'─'.repeat(58)}\n`;
+  txt += `SYNTHÈSE GÉNÉRALE\n`;
+  txt += `${'─'.repeat(58)}\n\n`;
+  txt += `  TOTAL GÉNÉRAL : ${total} symboles\n\n`;
+  symbols.forEach(sym => {
+    const r = analysisResults[sym];
+    const pct = total > 0 ? ((r.total/total)*100).toFixed(1) : 0;
+    txt += `  ${sym.padEnd(10)} : ${String(r.total).padStart(5)} occ. (${pct}%)\n`;
+  });
+
+  txt += `\n${'─'.repeat(58)}\n`;
+  txt += `DÉTAIL PAR PAGE\n`;
+  txt += `${'─'.repeat(58)}\n\n`;
+  symbols.forEach(sym => {
+    const r = analysisResults[sym];
+    if (r.total === 0) return;
+    txt += `  ▸ ${sym} — ${r.total} total\n`;
+    Object.entries(r.pages).sort((a,b)=>+a[0]-+b[0]).forEach(([pg, cnt]) => {
+      txt += `      Page ${pg} : ${cnt}\n`;
+    });
+    txt += '\n';
+  });
+
+  if (cdcResults) {
+    txt += `${'─'.repeat(58)}\n`;
+    txt += `CHEMINS DE CÂBLES\n`;
+    txt += `${'─'.repeat(58)}\n\n`;
+    CDC_TYPES.forEach(c => {
+      const cnt = cdcResults[c.code] || 0;
+      if (cnt > 0) txt += `  ${c.code.padEnd(18)} : ${cnt} mention${cnt>1?'s':''}\n`;
+    });
+    txt += '\n';
+  }
+
+  if (dimsResults && Object.keys(dimsResults).length > 0) {
+    txt += `${'─'.repeat(58)}\n`;
+    txt += `DIMENSIONS CDC\n`;
+    txt += `${'─'.repeat(58)}\n\n`;
+    Object.entries(dimsResults).sort((a,b)=>b[1]-a[1]).forEach(([dim, cnt]) => {
+      txt += `  ${(dim+' mm').padEnd(18)} : ${cnt}x\n`;
+    });
+    txt += '\n';
+  }
+
+  if (devisData.length > 0) {
+    const totalHT = devisData.reduce((a,r) => a + r.qty * r.pu, 0);
+    txt += `${'─'.repeat(58)}\n`;
+    txt += `ESTIMATIF QUANTITATIF\n`;
+    txt += `${'─'.repeat(58)}\n\n`;
+    devisData.forEach(row => {
+      const lt = row.qty * row.pu;
+      txt += `  ${row.sym.padEnd(8)} ${String(row.qty).padStart(4)} × ${String(row.pu).padStart(6)} € = ${fmtEur(lt)}\n`;
+    });
+    txt += `\n  ${'─'.repeat(40)}\n`;
+    txt += `  TOTAL HT : ${fmtEur(totalHT).padStart(12)}\n`;
+    txt += `  TVA 20%  : ${fmtEur(totalHT*0.2).padStart(12)}\n`;
+    txt += `  TOTAL TTC: ${fmtEur(totalHT*1.2).padStart(12)}\n`;
+  }
+
+  txt += `\n${'═'.repeat(58)}\n`;
+  document.getElementById('rapport-text').textContent = txt;
+}
+
+// ── CHECKLIST ────────────────────────────────────────────────
+function buildChecklist() {
+  const cont = document.getElementById('checklist-container');
+  cont.innerHTML = '';
+  let totalItems = 0, checked = 0;
+
+  CHECKLIST_ITEMS.forEach((section, si) => {
+    const sec = document.createElement('div');
+    sec.style.marginBottom = '20px';
+    sec.innerHTML = `<div class="section-title">${section.cat}</div>`;
+    const list = document.createElement('div');
+    list.className = 'checklist';
+    section.items.forEach((item, ii) => {
+      totalItems++;
+      const id = `chk-${si}-${ii}`;
+      const div = document.createElement('div');
+      div.className = 'check-item';
+      div.innerHTML = `
+        <input type="checkbox" id="${id}" onchange="updateChecklistProgress()">
+        <label for="${id}">
+          <strong>${item.label}</strong>
+          <span>${item.desc}</span>
+        </label>`;
+      list.appendChild(div);
+    });
+    sec.appendChild(list);
+    cont.appendChild(sec);
+  });
+
+  document.getElementById('checklist-progress-badge').textContent = `0 / ${totalItems}`;
+}
+
+function updateChecklistProgress() {
+  const all = document.querySelectorAll('#checklist-container input[type=checkbox]');
+  const done = [...all].filter(c => c.checked).length;
+  document.getElementById('checklist-progress-badge').textContent = `${done} / ${all.length}`;
+  if (done === all.length) toast('✓ Checklist complète !');
+}
+
+// ── LEGEND ───────────────────────────────────────────────────
+function buildLegend() {
+  const cats = { cfo: 'legend-cfo', cfa: 'legend-cfa', cdc: 'legend-cdc' };
+  Object.entries(cats).forEach(([key, id]) => {
+    const tbl = document.getElementById(id);
+    tbl.innerHTML = LEGEND_DATA[key].map(row => `
+      <tr>
+        <td class="sym-color" style="width:12px">
+          <span style="display:inline-block;width:10px;height:10px;background:${row.color};border-radius:50%"></span>
+        </td>
+        <td class="sym-code" style="color:${row.color};width:100px">${row.sym}</td>
+        <td style="font-weight:500">${row.label}</td>
+        <td style="color:var(--text-muted);font-size:12px">${row.desc}</td>
+      </tr>`).join('');
+  });
+}
+
+function filterLegend(q) {
+  document.querySelectorAll('.legend-table tr').forEach(row => {
+    row.style.display = q === '' || row.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ── SYMBOLS MANAGEMENT ───────────────────────────────────────
+function renderSymbolTags() {
+  const cont = document.getElementById('symbols-tags');
+  cont.innerHTML = '';
+  symbols.forEach((sym, i) => {
+    const color = COLORS[i % COLORS.length];
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.innerHTML = `<span class="dot" style="background:${color}"></span>${sym}<span class="tag-remove" onclick="removeSymbol(${i})">×</span>`;
+    cont.appendChild(tag);
+  });
+}
+
+function addSymbol() {
+  const si = document.getElementById('new-sym-input');
+  const di = document.getElementById('new-sym-desc');
+  const val = si.value.trim().toUpperCase();
+  if (!val) return;
+  if (symbols.includes(val)) { toast('⚠ Symbole déjà présent'); si.value = ''; return; }
+  symbols.push(val);
+  symbolDescs[val] = di.value.trim() || val;
+  si.value = ''; di.value = '';
+  renderSymbolTags();
+  toast(`✓ ${val} ajouté`);
+}
+
+function removeSymbol(i) {
+  const sym = symbols[i];
+  symbols.splice(i, 1);
+  delete symbolDescs[sym];
+  renderSymbolTags();
+}
+
+function resetSymbols() {
+  symbols = ['PT1','PA1','PCS','RJ45','PT2'];
+  symbolDescs = {};
+  symbols.forEach(s => { symbolDescs[s] = SYMBOL_LIBRARY[s]?.desc || s; });
+  renderSymbolTags();
+  toast('✓ Symboles réinitialisés');
+}
+
+function addPreset(key) {
+  let added = 0;
+  (PRESETS[key] || []).forEach(s => {
+    if (!symbols.includes(s)) { symbols.push(s); symbolDescs[s] = SYMBOL_LIBRARY[s]?.desc || s; added++; }
+  });
+  renderSymbolTags();
+  toast(`✓ ${added} symbole${added>1?'s':''} ajouté${added>1?'s':''} (${key})`);
+}
+
+// ── EXPORTS ──────────────────────────────────────────────────
+function exportCSV() {
+  if (!analysisResults) return;
+  let csv = 'Symbole,Description,Page,Occurrences\n';
+  symbols.forEach(sym => {
+    const r = analysisResults[sym];
+    const desc = SYMBOL_LIBRARY[sym]?.desc || sym;
+    Object.entries(r.pages).sort((a,b)=>+a[0]-+b[0]).forEach(([pg, cnt]) => {
+      csv += `${sym},"${desc}",${pg},${cnt}\n`;
+    });
+  });
+  dl(csv, `electocount_${Date.now()}.csv`, 'text/csv');
+  toast('✓ Export CSV téléchargé');
 }
 
 function exportJSON() {
   if (!analysisResults) return;
   const out = {
-    file: pdfFile.name,
-    date: new Date().toISOString(),
-    symbols: {}
+    file: pdfFile.name, date: new Date().toISOString(),
+    pages: totalPdfPages, symbols: {}
   };
   symbols.forEach(sym => {
     out.symbols[sym] = {
       total: analysisResults[sym].total,
-      pages: analysisResults[sym].pages
+      pages: analysisResults[sym].pages,
+      description: SYMBOL_LIBRARY[sym]?.desc || sym,
     };
   });
-  download(JSON.stringify(out, null, 2), `electocount_${Date.now()}.json`, 'application/json');
-  showToast('✓ Export JSON téléchargé');
+  dl(JSON.stringify(out, null, 2), `electocount_${Date.now()}.json`, 'application/json');
+  toast('✓ Export JSON téléchargé');
 }
 
-function copyReport() {
-  if (!analysisResults) return;
-  let txt = `RAPPORT ELECTOCOUNT — ${pdfFile.name}\n${'─'.repeat(50)}\n`;
-  txt += `Date : ${new Date().toLocaleString('fr-FR')}\n\n`;
-  let total = 0;
-  symbols.forEach(sym => {
-    const r = analysisResults[sym];
-    total += r.total;
-    txt += `${sym.padEnd(10)} : ${String(r.total).padStart(4)} occurrence${r.total>1?'s':''}\n`;
-    Object.entries(r.pages).forEach(([pg, cnt]) => {
-      txt += `  → Page ${pg} : ${cnt}\n`;
-    });
+function exportDevisCSV() {
+  if (!devisData.length) return;
+  let csv = 'Référence,Désignation,Unité,Qté détectée,Qté retenue,PU HT (€),Total HT (€)\n';
+  devisData.forEach(r => {
+    csv += `${r.sym},"${r.desc}",${r.unit},${r.detected},${r.qty},${r.pu},${(r.qty*r.pu).toFixed(2)}\n`;
   });
-  txt += `\n${'─'.repeat(50)}\nTOTAL : ${total} symboles\n`;
-  navigator.clipboard.writeText(txt).then(() => showToast('✓ Rapport copié dans le presse-papiers'));
+  const ht = devisData.reduce((a,r) => a + r.qty*r.pu, 0);
+  csv += `\nTotal HT,,,,,,${ht.toFixed(2)}\n`;
+  csv += `TVA 20%,,,,,,${(ht*0.2).toFixed(2)}\n`;
+  csv += `Total TTC,,,,,,${(ht*1.2).toFixed(2)}\n`;
+  dl(csv, `devis_electocount_${Date.now()}.csv`, 'text/csv');
+  toast('✓ Devis CSV téléchargé');
 }
 
-function download(content, filename, type) {
+function printDevis() { window.print(); }
+
+function copyRapport() {
+  const txt = document.getElementById('rapport-text')?.textContent;
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(() => toast('✓ Rapport copié'));
+}
+
+function dl(content, filename, type) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], { type }));
-  a.download = filename;
-  a.click();
+  a.download = filename; a.click();
 }
 
-// ── Toast ──────────────────────────────────────────────────────
+// ── TOAST ────────────────────────────────────────────────────
 let toastTimer;
-function showToast(msg) {
+function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
@@ -1101,13 +1820,10 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-// ── Spin keyframe ──────────────────────────────────────────────
-const style = document.createElement('style');
-style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
-document.head.appendChild(style);
-
-// ── Init ───────────────────────────────────────────────────────
-renderSymbols();
+// ── INIT ─────────────────────────────────────────────────────
+buildLegend();
+buildChecklist();
+renderSymbolTags();
 </script>
 </body>
 </html>
